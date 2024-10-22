@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,57 +7,68 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native"; // Import for navigation
+import { useNavigation } from "@react-navigation/native";
 import Header from "./header";
 
 const Cart = () => {
-  const navigation = useNavigation(); // Hook to handle navigation
+  const navigation = useNavigation();
+  const [cartItems, setCartItems] = useState([]);
+  const [products, setProducts] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const [cartItems, setCartItems] = useState([
-    {
-      id: "1",
-      image: require("../assets/images/product1.webp"),
-      name: "Áo thun",
-      qty: 2,
-      size: "M",
-      price: 199000,
-      selected: true,
-    },
-    {
-      id: "2",
-      image: require("../assets/images/product2.webp"),
-      name: "Áo thun",
-      qty: 1,
-      size: "L",
-      price: 149000,
-      selected: true,
-    },
-    {
-      id: "3",
-      image: require("../assets/images/product2.webp"),
-      name: "Áo thun",
-      qty: 1,
-      size: "S",
-      price: 99000,
-      selected: true,
-    },
-  ]);
+  useEffect(() => {
+    fetchCartData();
+  }, []);
 
-  const updateQuantity = (id, change) => {
-    setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, qty: Math.max(1, item.qty + change) } : item
+  const fetchCartData = async () => {
+    try {
+      // Fetch cart data
+      const cartResponse = await fetch('https://fakestoreapi.com/carts/1');
+      const cartData = await cartResponse.json();
+
+      // Fetch all products
+      const productsResponse = await fetch('https://fakestoreapi.com/products');
+      const productsData = await productsResponse.json();
+
+      // Create a map of products for easy lookup
+      const productsMap = productsData.reduce((acc, product) => {
+        acc[product.id] = product;
+        return acc;
+      }, {});
+
+      setProducts(productsMap);
+      setCartItems(cartData.products.map(item => ({
+        ...item,
+        selected: true,
+        product: productsMap[item.productId]
+      })));
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setLoading(false);
+    }
+  };
+
+  const updateQuantity = (productId, change) => {
+    setCartItems(prevItems =>
+      prevItems.map(item =>
+        item.productId === productId
+          ? { ...item, quantity: Math.max(1, item.quantity + change) }
+          : item
       )
     );
   };
 
-  const toggleItemSelection = (id) => {
-    setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, selected: !item.selected } : item
+  const toggleItemSelection = (productId) => {
+    setCartItems(prevItems =>
+      prevItems.map(item =>
+        item.productId === productId
+          ? { ...item, selected: !item.selected }
+          : item
       )
     );
   };
@@ -65,7 +76,7 @@ const Cart = () => {
   const renderCartItem = ({ item }) => (
     <View style={styles.cartItem}>
       <TouchableOpacity
-        onPress={() => toggleItemSelection(item.id)}
+        onPress={() => toggleItemSelection(item.productId)}
         style={styles.checkbox}
       >
         {item.selected ? (
@@ -74,20 +85,19 @@ const Cart = () => {
           <Feather name="square" size={24} color="#888" />
         )}
       </TouchableOpacity>
-      <Image source={item.image} style={styles.itemImage} />
+      <Image source={{ uri: item.product.image }} style={styles.itemImage} />
       <View style={styles.itemDetails}>
-        <Text style={styles.itemName}>{item.name}</Text>
-        <Text style={styles.itemInfo}>Size: {item.size}</Text>
+        <Text style={styles.itemName}>{item.product.title}</Text>
         <View style={styles.quantityControl}>
           <TouchableOpacity
-            onPress={() => updateQuantity(item.id, -1)}
+            onPress={() => updateQuantity(item.productId, -1)}
             style={styles.quantityButton}
           >
             <Text style={styles.quantityButtonText}>-</Text>
           </TouchableOpacity>
-          <Text style={styles.quantity}>{item.qty}</Text>
+          <Text style={styles.quantity}>{item.quantity}</Text>
           <TouchableOpacity
-            onPress={() => updateQuantity(item.id, 1)}
+            onPress={() => updateQuantity(item.productId, 1)}
             style={styles.quantityButton}
           >
             <Text style={styles.quantityButtonText}>+</Text>
@@ -95,45 +105,53 @@ const Cart = () => {
         </View>
       </View>
       <Text style={styles.itemPrice}>
-        {(item.price * item.qty).toLocaleString("vi-VN")} ₫
+        ${(item.product.price * item.quantity).toFixed(2)}
       </Text>
     </View>
   );
 
   const totalAmount = cartItems.reduce(
-    (sum, item) => (item.selected ? sum + item.price * item.qty : sum),
+    (sum, item) => (item.selected ? sum + item.product.price * item.quantity : sum),
     0
   );
 
-  // Handle Checkout Navigation
   const handleCheckout = () => {
-    navigation.navigate("checkout"); // Navigating to the Checkout screen
+    const selectedItems = cartItems.filter(item => item.selected);
+    navigation.navigate("checkout", { items: selectedItems });
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#FF6600" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <Header />
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          <Text style={styles.title}>Giỏ hàng</Text>
+          <Text style={styles.title}>Cart</Text>
           <FlatList
             data={cartItems}
             renderItem={renderCartItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.productId.toString()}
             scrollEnabled={false}
           />
           <View style={styles.summaryContainer}>
             <View style={styles.totalContainer}>
-              <Text style={styles.totalText}>Tổng cộng:</Text>
+              <Text style={styles.totalText}>Total:</Text>
               <Text style={styles.totalAmount}>
-                {totalAmount.toLocaleString("vi-VN")} ₫
+                ${totalAmount.toFixed(2)}
               </Text>
             </View>
             <TouchableOpacity
               style={styles.checkoutButton}
               onPress={handleCheckout}
             >
-              <Text style={styles.checkoutButtonText}>Thanh toán</Text>
+              <Text style={styles.checkoutButtonText}>Checkout</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -142,7 +160,12 @@ const Cart = () => {
   );
 };
 
+
 const styles = StyleSheet.create({
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: "#f8f8f8",
@@ -178,6 +201,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 5,
     marginRight: 10,
+    resizeMode: "contain", // Ensure the image fits well
   },
   itemName: {
     fontSize: 16,

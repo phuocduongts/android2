@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,80 +8,71 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
-  Alert, // Import Alert for showing notifications
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import Header from "./header";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
-const ProductDetail = ({}) => {
+const ProductDetail = () => {
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const navigation = useNavigation();
+  const route = useRoute();
+  const { productId } = route.params;
 
-  const product = {
-    id: "1",
-    name: "Áo thun local brand By UniSpace tay lỡ form rộng unisex oversize nam nữ Teddy Bear",
-    price: 310000,
-    salePrice: 172000,
-    soldCount: 1500,
-    image: require("../assets/images/product1.webp"),
-    description: "",
-    sizes: ["S", "M", "L", "XL"],
+  useEffect(() => {
+    fetchProductDetails();
+  }, [productId]);
+
+  const fetchProductDetails = async () => {
+    try {
+      const response = await fetch(`https://fakestoreapi.com/products/${productId}`);
+      const data = await response.json();
+      setProduct(data);
+      setLoading(false);
+    } catch (err) {
+      setError("Failed to fetch product details");
+      setLoading(false);
+    }
   };
 
-  const relatedProducts = [
-    {
-      id: "2",
-      name: "Áo thun",
-      price: 349000,
-      image: require("../assets/images/product1.webp"),
-    },
-    {
-      id: "3",
-      name: "Áo thun",
-      price: 399000,
-      image: require("../assets/images/product1.webp"),
-    },
-    {
-      id: "4",
-      name: "Áo thun",
-      price: 599000,
-      image: require("../assets/images/product1.webp"),
-    },
-  ];
-
-  const renderRelatedProduct = ({ item }) => (
-    <View style={styles.relatedProductItem}>
-      <Image source={item.image} style={styles.relatedProductImage} />
-      <Text style={styles.relatedProductName}>{item.name}</Text>
-      <Text style={styles.relatedProductPrice}>
-        {item.price.toLocaleString("vi-VN")} ₫
-      </Text>
-    </View>
-  );
-
-  const increaseQuantity = () =>
-    setQuantity((prevQuantity) => prevQuantity + 1);
-  const decreaseQuantity = () =>
-    setQuantity((prevQuantity) => Math.max(1, prevQuantity - 1));
+  const increaseQuantity = () => setQuantity((prevQuantity) => prevQuantity + 1);
+  const decreaseQuantity = () => setQuantity((prevQuantity) => Math.max(1, prevQuantity - 1));
 
   const handleAddToCart = () => {
-    // Show an alert when the product is added to the cart
     Alert.alert("Thông báo", "Sản phẩm đã được thêm vào giỏ hàng thành công!");
   };
 
   const handleBuyNow = () => {
-    if (!selectedSize) {
-      Alert.alert("Thông báo", "Vui lòng chọn kích cỡ trước khi mua hàng.");
-      return;
-    }
-
-    // Sử dụng replace thay vì navigate
-    navigation.navigate("checkout", { product, selectedSize, quantity });
+    navigation.navigate("checkout", { product, quantity });
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF6600" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (!product) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -90,68 +81,29 @@ const ProductDetail = ({}) => {
         <ScrollView style={styles.scrollView}>
           <View style={styles.imageContainer}>
             <Image
-              source={product.image}
+              source={{ uri: product.image }}
               style={styles.productImage}
               resizeMode="contain"
             />
           </View>
           <View style={styles.infoContainer}>
-            <Text style={styles.productName}>{product.name}</Text>
+            <Text style={styles.productName}>{product.title}</Text>
             <View style={styles.priceContainer}>
               <View style={styles.priceWrapper}>
-                <Text
-                  style={[
-                    styles.price,
-                    product.salePrice && styles.strikethrough,
-                  ]}
-                >
-                  {product.price.toLocaleString("vi-VN")} ₫
+                <Text style={styles.price}>
+                  ${product.price.toFixed(2)}
                 </Text>
-                {product.salePrice && (
-                  <Text style={styles.salePrice}>
-                    {product.salePrice.toLocaleString("vi-VN")} ₫
-                  </Text>
-                )}
               </View>
-              <Text style={styles.soldCount}>Đã bán {product.soldCount}</Text>
-            </View>
-
-            <Text style={styles.sectionTitle}>Chọn kích cỡ:</Text>
-            <View style={styles.sizeContainer}>
-              {product.sizes.map((size) => (
-                <TouchableOpacity
-                  key={size}
-                  style={[
-                    styles.sizeButton,
-                    selectedSize === size && styles.selectedSizeButton,
-                  ]}
-                  onPress={() => setSelectedSize(size)}
-                >
-                  <Text
-                    style={[
-                      styles.sizeButtonText,
-                      selectedSize === size && styles.selectedSizeButtonText,
-                    ]}
-                  >
-                    {size}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              <Text style={styles.category}>{product.category}</Text>
             </View>
 
             <Text style={styles.sectionTitle}>Số lượng:</Text>
             <View style={styles.quantityContainer}>
-              <TouchableOpacity
-                onPress={decreaseQuantity}
-                style={styles.quantityButton}
-              >
+              <TouchableOpacity onPress={decreaseQuantity} style={styles.quantityButton}>
                 <Text style={styles.quantityButtonText}>-</Text>
               </TouchableOpacity>
               <Text style={styles.quantityText}>{quantity}</Text>
-              <TouchableOpacity
-                onPress={increaseQuantity}
-                style={styles.quantityButton}
-              >
+              <TouchableOpacity onPress={increaseQuantity} style={styles.quantityButton}>
                 <Text style={styles.quantityButtonText}>+</Text>
               </TouchableOpacity>
             </View>
@@ -159,20 +111,8 @@ const ProductDetail = ({}) => {
             <Text style={styles.sectionTitle}>Mô tả sản phẩm:</Text>
             <Text style={styles.description}>{product.description}</Text>
 
-            <Text style={styles.sectionTitle}>Sản phẩm liên quan:</Text>
-            <FlatList
-              data={relatedProducts}
-              renderItem={renderRelatedProduct}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            />
-
             <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.cartButton}
-                onPress={handleAddToCart}
-              >
+              <TouchableOpacity style={styles.cartButton} onPress={handleAddToCart}>
                 <Text style={styles.cartButtonText}>Thêm vào giỏ hàng</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.buyButton} onPress={handleBuyNow}>
@@ -186,6 +126,24 @@ const ProductDetail = ({}) => {
   );
 };
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: 'red',
+  },
+  category: {
+    fontSize: 12,
+    color: "#888",
+  },
   container: {
     flex: 1,
   },
@@ -203,15 +161,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   productImage: {
-    width: width * 0.8,
-    height: "100%",
+    width: width * 0.3,
+    height: "50%",
   },
   infoContainer: {
     padding: 15,
   },
   productName: {
-    fontSize: 15,
+    fontSize: 20,
     marginBottom: 10,
+  },
+  priceWrapper: {
   },
   priceContainer: {
     flexDirection: "row",
@@ -220,7 +180,7 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 15,
-    color: "#888",
+    color: "orange",
   },
   strikethrough: {
     textDecorationLine: "line-through",
@@ -231,7 +191,7 @@ const styles = StyleSheet.create({
     color: "#FF6600",
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 18,
     marginTop: 15,
     marginBottom: 6,
   },

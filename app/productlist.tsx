@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,105 +8,82 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
-const products = [
-  {
-    id: "1",
-    name: "Product 1",
-    image: require("../assets/images/product1.webp"),
-    originalPrice: 100000,
-    discountedPrice: 80000,
-    soldCount: 150,
-  },
-  {
-    id: "2",
-    name: "Product 2",
-    image: require("../assets/images/product2.webp"),
-    originalPrice: 150000,
-    discountedPrice: 120000,
-    soldCount: 200,
-  },
-  {
-    id: "3",
-    name: "Product 1",
-    image: require("../assets/images/product1.webp"),
-    originalPrice: 100000,
-    discountedPrice: 80000,
-    soldCount: 150,
-  },
-  {
-    id: "4",
-    name: "Product 2",
-    image: require("../assets/images/product2.webp"),
-    originalPrice: 150000,
-    discountedPrice: 120000,
-    soldCount: 200,
-  },
-  {
-    id: "5",
-    name: "Product 1",
-    image: require("../assets/images/product1.webp"),
-    originalPrice: 100000,
-    discountedPrice: 80000,
-    soldCount: 150,
-  },
-  {
-    id: "5",
-    name: "Product 2",
-    image: require("../assets/images/product2.webp"),
-    originalPrice: 150000,
-    discountedPrice: 120000,
-    soldCount: 200,
-  },
-  // Add more products as needed
-];
-
-
 const ProductItem = ({ item }) => {
   const navigation = useNavigation();
 
   const handleProductPress = () => {
-    navigation.navigate("productdetail", { product: item });
+    navigation.navigate("productdetail", { productId: item.id });
   };
+
   const handleAddToCart = () => {
-    Alert.alert("Thông báo", `${item.name} đã được thêm vào giỏ hàng!`);
+    Alert.alert("Thông báo", `${item.title} đã được thêm vào giỏ hàng!`);
   };
+
   return (
     <View style={styles.productItem}>
       <TouchableOpacity onPress={handleProductPress}>
-        <Image source={item.image} style={styles.productImage} />
+        <Image source={{ uri: item.image }} style={styles.productImage} />
       </TouchableOpacity>
       <Text style={styles.productName} numberOfLines={2}>
-        {item.name}
+        {item.title}
       </Text>
       <View style={styles.priceContainer}>
         <Text style={styles.discountedPrice}>
-          {item.discountedPrice.toLocaleString()} đ
-        </Text>
-        <Text style={styles.originalPrice}>
-          {item.originalPrice.toLocaleString()} đ
+          ${item.price.toFixed(2)}
         </Text>
       </View>
-      <Text style={styles.soldCount}>Đã bán {item.soldCount}</Text>
-      <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
+      <Text style={styles.category}>{item.category}</Text>
+      <TouchableOpacity
+        style={styles.addToCartButton}
+        onPress={handleAddToCart}
+      >
         <Feather name="shopping-cart" size={18} color="white" />
         <Text style={styles.addToCartText}>Thêm vào giỏ</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
 const ProductList = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("https://fakestoreapi.com/products");
+      const data = await response.json();
+      setProducts(data);
+      setLoading(false);
+    } catch (err) {
+      setError("Failed to fetch products");
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <ActivityIndicator size="large" color="#FF4500" />;
+  }
+
+  if (error) {
+    return <Text style={styles.errorText}>{error}</Text>;
+  }
+
   return (
     <FlatList
       data={products}
       renderItem={({ item }) => <ProductItem item={item} />}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => item.id.toString()}
       numColumns={2}
       contentContainerStyle={styles.productList}
     />
@@ -132,7 +109,8 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: "100%",
-    height: 150,
+    height: undefined,
+    aspectRatio: 1, // Adjust the aspect ratio as needed
     borderRadius: 8,
     marginBottom: 10,
   },
@@ -152,12 +130,7 @@ const styles = StyleSheet.create({
     color: "#FF4500",
     marginRight: 5,
   },
-  originalPrice: {
-    fontSize: 12,
-    color: "#888",
-    textDecorationLine: "line-through",
-  },
-  soldCount: {
+  category: {
     fontSize: 12,
     color: "#888",
     marginBottom: 10,
@@ -175,6 +148,12 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontSize: 12,
     fontWeight: "bold",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "red",
+    textAlign: "center",
+    marginTop: 20,
   },
 });
 

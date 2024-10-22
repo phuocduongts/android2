@@ -7,21 +7,19 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
-  Alert, // Import Alert component
+  Alert,
+  FlatList,
 } from "react-native";
+import { useRoute } from "@react-navigation/native";
 
 const Checkout = () => {
+  const route = useRoute();
+  const { items } = route.params;
+
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
   const [selectedShipping, setSelectedShipping] = useState("standard");
   const [selectedPayment, setSelectedPayment] = useState("cod");
-  const [quantity, setQuantity] = useState(2);
-
-  const product = {
-    name: "Áo thun local brand By UniSpace tay lỡ form rộng unisex oversize nam nữ Teddy Bear",
-    price: 199000,
-    image: require("../assets/images/product1.webp"),
-  };
 
   const shippingOptions = [
     { id: "standard", label: "Tiêu chuẩn", price: 30000 },
@@ -33,22 +31,28 @@ const Checkout = () => {
     { id: "bank", label: "Chuyển khoản ngân hàng" },
   ];
 
-  const handleQuantityChange = (action) => {
-    if (action === "increase") {
-      setQuantity((prev) => prev + 1);
-    } else if (action === "decrease" && quantity > 1) {
-      setQuantity((prev) => prev - 1);
-    }
-  };
+  const renderCartItem = ({ item }) => (
+    <View style={styles.productContainer}>
+      <Image source={{ uri: item.product.image }} style={styles.productImage} />
+      <View style={styles.productInfo}>
+        <Text style={styles.productName}>{item.product.title}</Text>
+        <View style={styles.priceQuantityContainer}>
+          <Text style={styles.quantityText}>Quantity: {item.quantity}</Text>
+          <Text style={styles.productPrice}>
+            ${(item.product.price * item.quantity).toFixed(2)}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
 
-  const subtotal = product.price * quantity;
+  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const shippingFee = shippingOptions.find(
     (option) => option.id === selectedShipping
   ).price;
   const total = subtotal + shippingFee;
 
   const handleOrder = () => {
-    // Display a success alert when the order button is pressed
     Alert.alert("Thông báo", "Đặt hàng thành công!");
   };
 
@@ -61,38 +65,18 @@ const Checkout = () => {
           value={address}
           onChangeText={setAddress}
           multiline
+          style={styles.input}
         />
       </View>
 
-      {/* Product Information */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>By UniSpace</Text>
-        <View style={styles.productContainer}>
-          <Image source={product.image} style={styles.productImage} />
-          <View style={styles.productInfo}>
-            <Text style={styles.productName}>{product.name}</Text>
-            <View style={styles.priceQuantityContainer}>
-              <View style={styles.quantityContainer}>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => handleQuantityChange("decrease")}
-                >
-                  <Text style={styles.quantityButtonText}>-</Text>
-                </TouchableOpacity>
-                <Text style={styles.quantityText}>{quantity}</Text>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => handleQuantityChange("increase")}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.productPrice}>
-                {(product.price * quantity).toLocaleString()}đ
-              </Text>
-            </View>
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>Sản phẩm</Text>
+        <FlatList
+          data={items}
+          renderItem={renderCartItem}
+          keyExtractor={(item) => item.productId.toString()}
+          scrollEnabled={false}
+        />
       </View>
 
       {/* Shipping Options */}
@@ -148,15 +132,15 @@ const Checkout = () => {
         <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
         <View style={styles.row}>
           <Text>Tổng tiền hàng</Text>
-          <Text>{subtotal.toLocaleString()}đ</Text>
+          <Text>${subtotal.toFixed(2)}</Text>
         </View>
         <View style={styles.row}>
           <Text>Phí vận chuyển</Text>
-          <Text>{shippingFee.toLocaleString()}đ</Text>
+          <Text>{(shippingFee / 23000).toFixed(2)}$</Text>
         </View>
         <View style={[styles.row, styles.totalRow]}>
           <Text style={styles.totalText}>Tổng thanh toán</Text>
-          <Text style={styles.totalAmount}>{total.toLocaleString()}đ</Text>
+          <Text style={styles.totalAmount}>${total.toFixed(2)}</Text>
         </View>
       </View>
 
@@ -169,6 +153,38 @@ const Checkout = () => {
 };
 
 const styles = StyleSheet.create({
+  productContainer: {
+    flexDirection: "row",
+    marginBottom: 10,
+  },
+  productImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 5,
+    marginRight: 10,
+    resizeMode: "contain", // Ensure the image fits well
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  priceQuantityContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  quantityText: {
+    fontSize: 14,
+  },
+  productPrice: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#FF6600",
+  },
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",

@@ -102,6 +102,11 @@ const styles = StyleSheet.create({
     }),
     alignItems: "center",
   },
+  logo: {
+    width: 100, // Adjust width based on your logo size
+    height: 100, // Adjust height based on your logo size
+    marginBottom: 20,
+  },
   heading: {
     fontSize: 24,
     fontWeight: "700",
