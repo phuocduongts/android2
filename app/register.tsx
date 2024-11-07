@@ -1,4 +1,3 @@
-import { useNavigation } from "expo-router";
 import React, { useState } from "react";
 import {
   View,
@@ -9,112 +8,156 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function RegisterScreen() {
   const [isChecked, setIsChecked] = useState(false);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
+
+  const handleRegisterPress = async () => {
+    if (!username || !email || !phone || !password || !confirmPassword) {
+      Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin!");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Lỗi", "Mật khẩu không khớp!");
+      return;
+    }
+
+    setIsLoading(true);
+
+    const userData = { username, email, phone, password };
+
+    try {
+      await AsyncStorage.setItem("user", JSON.stringify(userData));
+      Alert.alert("Thành công", "Đăng ký thành công!");
+      navigation.navigate("index");
+    } catch (error) {
+      Alert.alert("Lỗi", "Đã xảy ra lỗi khi đăng ký. Vui lòng thử lại.");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.container}>
-        <View style={styles.registerBox}>
-          <Text style={styles.heading}>Đăng Ký</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.registerBox}>
+        <Text style={styles.heading}>Đăng ký</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Họ và tên:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập họ và tên của bạn"
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập địa chỉ email"
-              placeholderTextColor="#999"
-              keyboardType="email-address"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Số điện thoại:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập số điện thoại"
-              placeholderTextColor="#999"
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mật khẩu:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Tạo mật khẩu"
-              placeholderTextColor="#999"
-              secureTextEntry={true}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Xác nhận mật khẩu:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập lại mật khẩu"
-              placeholderTextColor="#999"
-              secureTextEntry={true}
-            />
-          </View>
-
-          <Pressable
-            style={styles.termsContainer}
-            onPress={() => setIsChecked(!isChecked)}
-          >
-            <View style={styles.customCheckbox}>
-              {isChecked && <View style={styles.checkboxInner} />}
-            </View>
-            <Text style={styles.termsText}>
-              Tôi đồng ý với <Text style={styles.termsLink}>Điều khoản</Text> và{" "}
-              <Text style={styles.termsLink}>Chính sách bảo mật</Text>
-            </Text>
-          </Pressable>
-
-          <TouchableOpacity style={styles.registerButton}>
-            <Text style={styles.registerButtonText}>Đăng Ký</Text>
-          </TouchableOpacity>
-
-          <View style={styles.loginLinkContainer}>
-            <Text style={styles.loginText}>Đã có tài khoản? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('index')}>
-              <Text style={styles.loginLink}>Đăng nhập</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Tên đăng nhập:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Tên đăng nhập"
+            placeholderTextColor="#999"
+            value={username}
+            onChangeText={setUsername}
+          />
         </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#999"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Số điện thoại:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Số điện thoại"
+            placeholderTextColor="#999"
+            value={phone}
+            onChangeText={setPhone}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Mật khẩu:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Mật khẩu"
+            placeholderTextColor="#999"
+            secureTextEntry={true}
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Xác nhận mật khẩu:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Xác nhận mật khẩu"
+            placeholderTextColor="#999"
+            secureTextEntry={true}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+        </View>
+
+        <Pressable
+          style={styles.rememberMe}
+          onPress={() => setIsChecked(!isChecked)}
+        >
+          <View style={[styles.customCheckbox, isChecked && styles.checked]}>
+            {isChecked && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+          <Text style={styles.rememberText}>Nhớ thông tin</Text>
+        </Pressable>
+
+        <TouchableOpacity
+          style={[styles.registerButton, isLoading && styles.disabledButton]}
+          onPress={handleRegisterPress}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.registerButtonText}>Đăng Ký</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginLinkContainer}
+          onPress={() => navigation.navigate("index")}
+        >
+          <Text style={styles.loginLink}>Đã có tài khoản? Đăng Nhập</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-  },
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#EC6F66",
-    padding: 20,
+    backgroundColor: "#ffe0cc",
   },
   registerBox: {
     backgroundColor: "white",
     borderRadius: 10,
     padding: 30,
-    width: "100%",
-    maxWidth: 350,
+    width: 350,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -126,13 +169,13 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
     }),
+    alignItems: "center",
   },
   heading: {
     fontSize: 24,
     fontWeight: "700",
     color: "#333",
     marginBottom: 20,
-    textAlign: "center",
   },
   inputGroup: {
     marginBottom: 15,
@@ -152,38 +195,35 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     fontSize: 16,
   },
-  termsContainer: {
+  rememberMe: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 20,
+    width: "100%",
   },
   customCheckbox: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: "#FF4D00",
+    borderColor: "#ff751a",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 2,
+    backgroundColor: "transparent",
   },
-  checkboxInner: {
-    width: 12,
-    height: 12,
-    backgroundColor: "#FF4D00",
-    borderRadius: 2,
+  checked: {
+    backgroundColor: "#ff751a",
   },
-  termsText: {
+  checkmark: {
+    color: "white",
+    fontSize: 16,
+  },
+  rememberText: {
     marginLeft: 8,
     color: "#333",
-    flex: 1,
-  },
-  termsLink: {
-    color: "#FF4D00",
-    fontWeight: "600",
   },
   registerButton: {
-    backgroundColor: "#FF4D00",
+    backgroundColor: "#ff751a",
     padding: 15,
     borderRadius: 5,
     width: "100%",
@@ -200,6 +240,9 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  disabledButton: {
+    opacity: 0.7,
+  },
   registerButtonText: {
     color: "white",
     fontSize: 16,
@@ -207,15 +250,10 @@ const styles = StyleSheet.create({
   },
   loginLinkContainer: {
     marginTop: 15,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loginText: {
-    color: "#333",
   },
   loginLink: {
-    color: "#FF4D00",
+    color: "#ff751a",
     fontWeight: "600",
+    fontSize: 16,
   },
 });

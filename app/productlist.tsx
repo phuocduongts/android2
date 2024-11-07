@@ -12,8 +12,10 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
+const CART_KEY = "cartItems";
 
 const ProductItem = ({ item }) => {
   const navigation = useNavigation();
@@ -22,8 +24,24 @@ const ProductItem = ({ item }) => {
     navigation.navigate("productdetail", { productId: item.id });
   };
 
-  const handleAddToCart = () => {
-    Alert.alert("Thông báo", `${item.title} đã được thêm vào giỏ hàng!`);
+  const handleAddToCart = async () => {
+    try {
+      const storedCart = await AsyncStorage.getItem(CART_KEY);
+      const cartData = storedCart ? JSON.parse(storedCart) : [];
+
+      // Check if item already exists in cart
+      const existingItem = cartData.find(cartItem => cartItem.productId === item.id);
+      if (existingItem) {
+        existingItem.quantity += 1; // Increase quantity if item exists
+      } else {
+        cartData.push({ productId: item.id, quantity: 1 }); // Add new item with quantity 1
+      }
+
+      await AsyncStorage.setItem(CART_KEY, JSON.stringify(cartData));
+      Alert.alert("Thông báo", `${item.title} đã được thêm vào giỏ hàng!`);
+    } catch (error) {
+      console.error("Error adding to cart", error);
+    }
   };
 
   return (
@@ -36,20 +54,14 @@ const ProductItem = ({ item }) => {
       </Text>
       <View style={styles.priceContainer}>
         <Text style={styles.discountedPrice}>
-          ${item.price.toFixed(2)}
+          đ{item.price.toFixed(2)}
         </Text>
       </View>
       <Text style={styles.category}>{item.category}</Text>
-      <TouchableOpacity
-        style={styles.addToCartButton}
-        onPress={handleAddToCart}
-      >
-        <Feather name="shopping-cart" size={18} color="white" />
-        <Text style={styles.addToCartText}>Thêm vào giỏ</Text>
-      </TouchableOpacity>
     </View>
   );
 };
+
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -110,12 +122,12 @@ const styles = StyleSheet.create({
   productImage: {
     width: "100%",
     height: undefined,
-    aspectRatio: 1, // Adjust the aspect ratio as needed
+    aspectRatio: 1,
     borderRadius: 8,
     marginBottom: 10,
   },
   productName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "bold",
     marginBottom: 5,
   },
@@ -127,11 +139,11 @@ const styles = StyleSheet.create({
   discountedPrice: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#FF4500",
+    color: "#ff751a",
     marginRight: 5,
   },
   category: {
-    fontSize: 12,
+    fontSize: 10,
     color: "#888",
     marginBottom: 10,
   },

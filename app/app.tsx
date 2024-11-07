@@ -8,6 +8,9 @@ import Checkout from "./checkout";
 import RegisterScreen from "./register";
 import LoginScreen from "./(tabs)";
 import Home from "./home";
+import ProductCategoryScreen from "./ProductCategoryScreen";
+import Menu from "./menu";
+import Toast from "react-native-toast-message";
 
 const Stack = createStackNavigator();
 
@@ -68,6 +71,19 @@ export default function App() {
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
+      <Stack.Navigator initialRouteName="Menu">z
+        <Stack.Screen name="Menu" component={Menu} />
+        <Stack.Screen
+          name="ProductCategoryScreen"
+          component={ProductCategoryScreen}
+        />
+        <Stack.Screen name="ProductDetail" component={ProductDetail} />
+      </Stack.Navigator>
+      <Stack.Navigator initialRouteName="ProductDetail">
+        <Stack.Screen name="ProductDetail" component={ProductDetail} />
+        <Stack.Screen name="Cart" component={Cart} />
+      </Stack.Navigator>
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </NavigationContainer>
   );
 }

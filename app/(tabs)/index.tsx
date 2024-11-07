@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,32 +7,92 @@ import {
   StyleSheet,
   Platform,
   Pressable,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [isChecked, setIsChecked] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
 
   const handleRegisterPress = () => {
-    navigation.navigate("register");
+    navigation.navigate('register');
   };
 
-  const handleLoginPress = () => {
-    navigation.navigate("home");
+  const handleLoginPress = async () => {
+    if (!username || !password) {
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin đăng nhập!');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const storedUserData = await AsyncStorage.getItem('user');
+      console.log("Stored user data:", storedUserData);
+
+      if (storedUserData) {
+        const userData = JSON.parse(storedUserData);
+        console.log("Checking credentials for:", username);
+
+        if (userData.username === username && userData.password === password) {
+          // Đăng nhập thành công
+          if (isChecked) {
+            // Lưu trạng thái đăng nhập
+            await AsyncStorage.setItem('isLoggedIn', 'true');
+            await AsyncStorage.setItem('rememberedUser', JSON.stringify({ username, password }));
+          }
+          navigation.navigate('home'); // Chuyển hướng về Home
+        } else {
+          Alert.alert('Lỗi', 'Tên đăng nhập hoặc mật khẩu không chính xác!');
+        }
+      } else {
+        Alert.alert('Lỗi', 'Tài khoản không tồn tại!');
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', 'Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    const checkSavedCredentials = async () => {
+      try {
+        const rememberedUser = await AsyncStorage.getItem('rememberedUser');
+        if (rememberedUser) {
+          const { username: savedUsername, password: savedPassword } = JSON.parse(rememberedUser);
+          setUsername(savedUsername);
+          setPassword(savedPassword);
+          setIsChecked(true);
+        }
+      } catch (error) {
+        console.log('Error checking saved credentials:', error);
+      }
+    };
+    checkSavedCredentials();
+  }, []);
 
   return (
     <View style={styles.container}>
       <View style={styles.loginBox}>
-        <Text style={styles.heading}>Đăng Nhập</Text>
+        <Text style={styles.heading}>Đăng nhập</Text>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Tên đăng nhập:</Text>
           <TextInput
             style={styles.input}
-            placeholder="Tên đăng nhập hoặc email"
+            placeholder="Tên đăng nhập"
             placeholderTextColor="#999"
+            value={username}
+            onChangeText={setUsername}
           />
         </View>
 
@@ -42,8 +102,18 @@ export default function LoginScreen() {
             style={styles.input}
             placeholder="Mật khẩu"
             placeholderTextColor="#999"
-            secureTextEntry={true}
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
           />
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.showPasswordButton}
+          >
+            <Text style={styles.showPasswordText}>
+              {showPassword ? "Ẩn" : "Hiển thị"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.options}>
@@ -51,8 +121,8 @@ export default function LoginScreen() {
             style={styles.rememberMe}
             onPress={() => setIsChecked(!isChecked)}
           >
-            <View style={styles.customCheckbox}>
-              {isChecked && <View style={styles.checkboxInner} />}
+            <View style={[styles.customCheckbox, isChecked && styles.checked]}>
+              {isChecked && <Text style={styles.checkmark}>✓</Text>}
             </View>
             <Text style={styles.rememberText}>Nhớ mật khẩu</Text>
           </Pressable>
@@ -62,8 +132,16 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
-          <Text style={styles.loginButtonText}>Đăng Nhập</Text>
+        <TouchableOpacity 
+          style={[styles.loginButton, isLoading && styles.disabledButton]}
+          onPress={handleLoginPress}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.loginButtonText}>Đăng Nhập</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -82,7 +160,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#EC6F66",
+    backgroundColor: "#ffe0cc",
   },
   loginBox: {
     backgroundColor: "white",
@@ -101,11 +179,6 @@ const styles = StyleSheet.create({
       },
     }),
     alignItems: "center",
-  },
-  logo: {
-    width: 100, // Adjust width based on your logo size
-    height: 100, // Adjust height based on your logo size
-    marginBottom: 20,
   },
   heading: {
     fontSize: 24,
@@ -131,6 +204,16 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     fontSize: 16,
   },
+  showPasswordButton: {
+    position: "absolute",
+    right: 15,
+    top: "63%",
+    transform: [{ translateY: -8 }],
+  },
+  showPasswordText: {
+    color: "#ff751a",
+    fontWeight: "600",
+  },
   options: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -143,30 +226,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   customCheckbox: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: "#FF4D00",
+    borderColor: "#ff751a",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "transparent",
   },
-  checkboxInner: {
-    width: 12,
-    height: 12,
-    backgroundColor: "#FF4D00",
-    borderRadius: 2,
+  checked: {
+    backgroundColor: "#ff751a",
+  },
+  checkmark: {
+    color: "white",
+    fontSize: 16,
   },
   rememberText: {
     marginLeft: 8,
     color: "#333",
   },
   forgotPassword: {
-    color: "#FF4D00",
+    color: "#ff751a",
     fontWeight: "600",
   },
   loginButton: {
-    backgroundColor: "#FF4D00",
+    backgroundColor: "#ff751a",
     padding: 15,
     borderRadius: 5,
     width: "100%",
@@ -183,6 +268,9 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  disabledButton: {
+    opacity: 0.7,
+  },
   loginButtonText: {
     color: "white",
     fontSize: 16,
@@ -192,7 +280,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   signupLink: {
-    color: "#FF4D00",
+    color: "#ff751a",
     fontWeight: "600",
     fontSize: 16,
   },

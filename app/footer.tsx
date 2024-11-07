@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   orangeTriangle: {
     width: 40,
     height: 40,
-    backgroundColor: "#FF6B00",
+    backgroundColor: "#ff751a",
     transform: [{ skewX: "-20deg" }],
     marginBottom: 10,
   },
